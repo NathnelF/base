@@ -1,0 +1,7 @@
+BasedOnStyle: Mozilla
+BreakBeforeBraces: Allman
+BreakAfterReturnType: Automatic
+PointerAlignment: Right
+IndentWidth: 4
+Language: Cpp
+SkipMacroDefinitionBody: true
