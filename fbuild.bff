@@ -1,0 +1,108 @@
+// fbuild.bff
+//
+// Builds base's tests. base itself is a unity build (see base.cpp): games
+// #include "base/base.cpp" in their own source and never use this file.
+//
+//     fbuild debug | release | profile | all
+//     fbuild arch-test-debug
+//
+// Each test is a single .cpp that includes its layer's unity file and has a
+// main(), so each test target is one ObjectList + one Executable per config.
+// Outputs land in bin\<config>\<test>\.
+//
+// The toolchain block is the one C:\Scripts\buildf.py generates; keep the two
+// in sync when VS or the Windows SDK updates.
+
+// Toolchain locations. Update the version numbers when VS or the Windows SDK updates.
+.MSVCPath           = 'C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.50.35717'
+.SDKPath            = 'C:\Program Files (x86)\Windows Kits\10'
+.SDKVersion         = '10.0.26100.0'
+
+.VSBasePath         = '$MSVCPath$\bin\Hostx64\x64'
+
+.Compiler           = '$VSBasePath$\cl.exe'
+
+.CompilerOptionsCommon    = '"%1"'           // Input
+                    + ' /Fo"%2"'       // Output
+                    + ' /Z7'           // Debug format (in .obj)
+                    + ' /c'            // Compile only
+                    + ' /nologo'       // No compiler spam
+                    //+ ' /W4'           // Warning level 4
+                    //+ ' /WX'           // Warnings as errors
+                    + ' /D_CRT_SECURE_NO_WARNINGS'
+                    + ' /std:c++20 '
+                    // System headers, so the build doesn't depend on vcvars64.bat having set INCLUDE
+                    + ' /I"$MSVCPath$\include"'                     // C/C++ standard library
+                    + ' /I"$SDKPath$\Include\$SDKVersion$\ucrt"'    // C runtime
+                    + ' /I"$SDKPath$\Include\$SDKVersion$\um"'      // windows.h
+                    + ' /I"$SDKPath$\Include\$SDKVersion$\shared" '
+
+.CompilerOptionsDebug = '$CompilerOptionsCommon$' + '/Od /MDd /D_DEBUG '
+.CompilerOptionsRelease = '$CompilerOptionsCommon$' + '/O2 /MD /DNDEBUG'
+.CompilerOptionsProfile = '$CompilerOptionsCommon$' + '/O2 /MD /DNDEBUG'
+                    + ' /arch:AVX2'    // Allow AVX2 vectorization
+                    + ' /W4'           // Warning level 4
+                    + ' /Qvec-report:2' // Report which loops were / weren't vectorized
+                    + ' /fp:fast'
+
+.Linker             = '$VSBasePath$\link.exe'
+
+.LinkerOptionsCommon  = ' /OUT:"%2"'     // Output
+                    + ' "%1"'          // Input
+                    //+ ' /WX'           // Warnings as errors
+                    + ' /NOLOGO'       // No linker spam
+                    // System libraries, so the build doesn't depend on vcvars64.bat having set LIB
+                    + ' /LIBPATH:"$MSVCPath$\lib\x64"'                  // C/C++ runtime
+                    + ' /LIBPATH:"$SDKPath$\Lib\$SDKVersion$\ucrt\x64"' // C runtime
+                    + ' /LIBPATH:"$SDKPath$\Lib\$SDKVersion$\um\x64" '  // kernel32.lib etc.
+
+.LinkerOptionsDebug = '$LinkerOptionsCommon$' + '/DEBUG'
+.LinkerOptionsRelease = '$LinkerOptionsCommon$' + ' /DEBUG /OPT:REF /OPT:ICF'
+.LinkerOptionsProfile = '$LinkerOptionsCommon$' + ' /DEBUG /OPT:REF /OPT:ICF' // .pdb so VTune can map samples to source
+
+// Build configurations. ForEach + Using below brings .ConfigName,
+// .CompilerOptions and .LinkerOptions into scope for each one.
+.ConfigDebug =
+[
+    .ConfigName         = 'debug'
+    .CompilerOptions    = .CompilerOptionsDebug
+    .LinkerOptions      = .LinkerOptionsDebug
+]
+.ConfigRelease =
+[
+    .ConfigName         = 'release'
+    .CompilerOptions    = .CompilerOptionsRelease
+    .LinkerOptions      = .LinkerOptionsRelease
+]
+.ConfigProfile =
+[
+    .ConfigName         = 'profile'
+    .CompilerOptions    = .CompilerOptionsProfile
+    .LinkerOptions      = .LinkerOptionsProfile
+]
+
+.Configs            = { .ConfigDebug, .ConfigRelease, .ConfigProfile }
+
+// Tests. Add one ObjectList + Executable pair per layer test, then add the
+// targets to the aliases below.
+ForEach( .Config in .Configs )
+{
+    Using( .Config )
+
+    ObjectList( 'arch-test-obj-$ConfigName$' )
+    {
+        .CompilerInputFiles = { 'architecture\test\arch_test.cpp' }
+        .CompilerOutputPath = 'bin\$ConfigName$\arch_test\'
+    }
+
+    Executable( 'arch-test-$ConfigName$' )
+    {
+        .Libraries          = { 'arch-test-obj-$ConfigName$' }
+        .LinkerOutput       = 'bin\$ConfigName$\arch_test\arch_test.exe'
+    }
+}
+
+Alias( 'debug' )   { .Targets = { 'arch-test-debug' } }
+Alias( 'release' ) { .Targets = { 'arch-test-release' } }
+Alias( 'profile' ) { .Targets = { 'arch-test-profile' } }
+Alias( 'all' )     { .Targets = { 'debug', 'release', 'profile' } }

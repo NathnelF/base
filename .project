@@ -1,5 +1,5 @@
 {
     "name": "base",
-    "ignore": [],
+    "ignore": ["bin/"],
     "configurations": []
 }
