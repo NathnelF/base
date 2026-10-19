@@ -39,6 +39,9 @@ This file contains the coding style convetions for this repository.
 - Performance is king. Many things will be multithreaded and take advantage of SIMD.
 - Favor one long documentation style comment at the top of each file over many individual comment lines.
 - Use (TODO: ) and (NOTE: ) to add information for future developers.
+- ZII philosophy. Write code that can avoid null checks and still work seamlessly. Use global "nil structs".
+- Steal Ryan Fleury and Casey Muratori's ideas they're pretty smart.
+
 
 ## Architecture
 

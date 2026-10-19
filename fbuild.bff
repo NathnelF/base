@@ -100,9 +100,21 @@ ForEach( .Config in .Configs )
         .Libraries          = { 'arch-test-obj-$ConfigName$' }
         .LinkerOutput       = 'bin\$ConfigName$\arch_test\arch_test.exe'
     }
+
+    ObjectList( 'os-memory-test-obj-$ConfigName$' )
+    {
+        .CompilerInputFiles = { 'os\test\os_memory_test.cpp' }
+        .CompilerOutputPath = 'bin\$ConfigName$\os_memory_test\'
+    }
+
+    Executable( 'os-memory-test-$ConfigName$' )
+    {
+        .Libraries          = { 'os-memory-test-obj-$ConfigName$' }
+        .LinkerOutput       = 'bin\$ConfigName$\os_memory_test\os_memory_test.exe'
+    }
 }
 
-Alias( 'debug' )   { .Targets = { 'arch-test-debug' } }
-Alias( 'release' ) { .Targets = { 'arch-test-release' } }
-Alias( 'profile' ) { .Targets = { 'arch-test-profile' } }
+Alias( 'debug' )   { .Targets = { 'arch-test-debug', 'os-memory-test-debug' } }
+Alias( 'release' ) { .Targets = { 'arch-test-release', 'os-memory-test-release' } }
+Alias( 'profile' ) { .Targets = { 'arch-test-profile', 'os-memory-test-profile' } }
 Alias( 'all' )     { .Targets = { 'debug', 'release', 'profile' } }
