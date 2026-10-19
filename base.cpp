@@ -15,8 +15,9 @@
     including static helpers, must be unique. Prefix helpers with their layer
     or system (CpuFeatureBit, not Bit).
 
-    TODO: Add containers and math as those layers get code.
+    TODO: Add math as that layer gets code.
 */
 
 #include "architecture/architecture.cpp"
 #include "os/os.cpp"
+#include "containers/containers.cpp"

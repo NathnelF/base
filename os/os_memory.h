@@ -9,8 +9,10 @@
     address range. Release gives the whole reservation back.
 
     Semantics:
-    - Reserve rounds the size up to reserve_granularity. Commit and decommit
-      round the range outward to page_size.
+    - Reserve rounds the size up to reserve_granularity.
+    - Commit rounds the range outward to whole pages, so every byte asked for
+      is usable. Decommit rounds inward, so it never frees a page that holds
+      bytes outside the range. A decommit smaller than a page does nothing.
     - Fresh commits are zeroed. Recommitting after a decommit is zeroed too.
     - Commit is idempotent on pages that are already committed.
     - OsMemRelease takes a size for the POSIX munmap case. Windows ignores it
@@ -47,7 +49,9 @@ OsMemInfo *OsMemGetInfo(void);
 void *OsMemReserve(u64 size);
 
 // Like OsMemReserve but asks for a specific base address, for stable
-// addresses across debug reloads. Null if the hint is unavailable.
+// addresses across debug reloads. The hint must be a multiple of
+// reserve_granularity. Null if the hint is unaligned or already taken; it
+// never falls back to a different address.
 void *OsMemReserveAt(void *hint, u64 size);
 
 b32 OsMemCommit(void *ptr, u64 size);

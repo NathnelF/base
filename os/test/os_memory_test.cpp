@@ -92,6 +92,25 @@ int main(void)
     // Unaligned commit rounds outward to pages.
     CHECK(OsMemCommit(base + 2 * MB + 5, 10));
     base[2 * MB + 5] = 1;
+
+    // Unaligned decommit rounds inward: the partly covered pages at both ends
+    // keep their data, and only the whole page between them is freed.
+    u64 page = info->page_size;
+    u8 *pages = base + 4 * MB;
+    CHECK(OsMemCommit(pages, 3 * page));
+    pages[page - 1] = 11;
+    pages[page] = 22;
+    pages[2 * page] = 33;
+    OsMemDecommit(pages + page - 1, page + 2);
+    CHECK(pages[page - 1] == 11);
+    CHECK(pages[2 * page] == 33);
+    CHECK(OsMemCommit(pages + page, page));
+    CHECK(pages[page] == 0);
+
+    // A decommit inside a single page frees nothing.
+    pages[page + 10] = 44;
+    OsMemDecommit(pages + page + 8, 100);
+    CHECK(pages[page + 10] == 44);
     OsMemRelease(base, 1 * GB);
 
     // Reserve at a hint: first gets it, a second claim on the same spot fails.
@@ -103,6 +122,9 @@ int main(void)
     void *taken = OsMemReserveAt(first, 1 * MB);
     CHECK(taken == 0);
     OsMemRelease(hinted, 1 * MB);
+
+    // An unaligned hint is refused rather than rounded to another address.
+    CHECK(OsMemReserveAt((u8 *)first + info->page_size, 1 * MB) == 0);
 
     // ZII: nulls, zeros and absurd sizes do nothing and do not crash.
     CHECK(OsMemReserve(0) == 0);

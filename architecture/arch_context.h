@@ -22,6 +22,10 @@
     -mavx2, ...). Whether the running CPU supports more is a run-time
     question answered by QueryCpuInfo() in arch_cpu.h.
 
+    base is 64-bit only; a 32-bit target is a compile error. Every current
+    console and mobile platform is 64-bit, and the memory code assumes
+    sizes up to u64 fit in size_t.
+
     ARCH_CACHE_LINE_SIZE is the line size to pad shared data to in
     multithreaded code so independent writers do not false-share.
 
@@ -129,6 +133,10 @@
 #else
 #define ARCH_64BIT 0
 #define ARCH_32BIT 1
+#endif
+
+#if !ARCH_64BIT
+#error "base is 64-bit only"
 #endif
 
 #if defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__) &&                \
