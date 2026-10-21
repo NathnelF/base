@@ -18,14 +18,12 @@
     NOTE: operator[] is the one method in base; C++ requires it to be a
     member. begin and end are lowercase free functions because range-for
     looks them up by those names.
-
-    TODO: SliceCopy uses an element loop; switch to a base MemCopy once one
-    exists.
 */
 
 #pragma once
 
 #include "../types/base_assert.h"
+#include "../types/base_memory.h"
 #include "../types/base_types.h"
 #include "arena.h"
 
@@ -102,10 +100,7 @@ template<typename T>
 Slice<T> SliceCopy(Arena *arena, Slice<T> source)
 {
     Slice<T> result = SlicePushNoZero<T>(arena, source.count);
-    for (u64 i = 0; i < result.count; ++i)
-    {
-        result.data[i] = source.data[i];
-    }
+    MemCopy(result.data, source.data, sizeof(T) * result.count);
     return result;
 }
 

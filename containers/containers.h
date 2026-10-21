@@ -9,3 +9,4 @@
 
 #include "arena.h"
 #include "slice.h"
+#include "string8.h"

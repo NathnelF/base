@@ -17,6 +17,7 @@
 
 #include "arena.h"
 #include "../os/os_memory.h"
+#include "../types/base_memory.h"
 
 static Arena arena_nil;
 static u8 arena_nil_block[ARENA_NIL_BLOCK_SIZE];
@@ -46,30 +47,6 @@ static Arena *ArenaOrNil(Arena *arena)
     return arena;
 }
 
-// TODO: Wide/SIMD stores for large clears.
-static void ArenaZeroBytes(void *ptr, u64 size)
-{
-    u8 *bytes = (u8 *)ptr;
-    while (size > 0 && ((uptr)bytes & 7) != 0)
-    {
-        *bytes = 0;
-        ++bytes;
-        --size;
-    }
-    while (size >= 8)
-    {
-        *(u64 *)bytes = 0;
-        bytes += 8;
-        size -= 8;
-    }
-    while (size > 0)
-    {
-        *bytes = 0;
-        ++bytes;
-        --size;
-    }
-}
-
 // What a failed push returns: zeroed shared scratch if it fits, else null.
 static void *ArenaFailedPush(u64 size)
 {
@@ -77,7 +54,7 @@ static void *ArenaFailedPush(u64 size)
     {
         return 0;
     }
-    ArenaZeroBytes(arena_nil_block, size);
+    MemZero(arena_nil_block, size);
     return arena_nil_block;
 }
 
@@ -207,7 +184,7 @@ void *ArenaPush(Arena *arena, u64 size, u64 align)
     {
         return ArenaFailedPush(size);
     }
-    ArenaZeroBytes(result, size);
+    MemZero(result, size);
     return result;
 }
 

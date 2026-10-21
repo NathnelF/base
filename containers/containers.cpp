@@ -8,3 +8,5 @@
 
 #include "arena.cpp"
 #include "slice.h"
+#include "string8.cpp"
+#include "string8_format.cpp"

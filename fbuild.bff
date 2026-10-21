@@ -136,9 +136,21 @@ ForEach( .Config in .Configs )
         .Libraries          = { 'slice-test-obj-$ConfigName$' }
         .LinkerOutput       = 'bin\$ConfigName$\slice_test\slice_test.exe'
     }
+
+    ObjectList( 'string-test-obj-$ConfigName$' )
+    {
+        .CompilerInputFiles = { 'containers\test\string_test.cpp' }
+        .CompilerOutputPath = 'bin\$ConfigName$\string_test\'
+    }
+
+    Executable( 'string-test-$ConfigName$' )
+    {
+        .Libraries          = { 'string-test-obj-$ConfigName$' }
+        .LinkerOutput       = 'bin\$ConfigName$\string_test\string_test.exe'
+    }
 }
 
-Alias( 'debug' )   { .Targets = { 'arch-test-debug', 'os-memory-test-debug', 'arena-test-debug', 'slice-test-debug' } }
-Alias( 'release' ) { .Targets = { 'arch-test-release', 'os-memory-test-release', 'arena-test-release', 'slice-test-release' } }
-Alias( 'profile' ) { .Targets = { 'arch-test-profile', 'os-memory-test-profile', 'arena-test-profile', 'slice-test-profile' } }
+Alias( 'debug' )   { .Targets = { 'arch-test-debug', 'os-memory-test-debug', 'arena-test-debug', 'slice-test-debug', 'string-test-debug' } }
+Alias( 'release' ) { .Targets = { 'arch-test-release', 'os-memory-test-release', 'arena-test-release', 'slice-test-release', 'string-test-release' } }
+Alias( 'profile' ) { .Targets = { 'arch-test-profile', 'os-memory-test-profile', 'arena-test-profile', 'slice-test-profile', 'string-test-profile' } }
 Alias( 'all' )     { .Targets = { 'debug', 'release', 'profile' } }
