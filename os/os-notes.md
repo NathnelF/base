@@ -16,9 +16,14 @@ Files:
 - os.cpp: upper unity part.
 - os_debug.h / os_debug.cpp: OS error messages, debugger and stderr output.
 - os_debug_win32.cpp: FormatMessageW / OutputDebugStringW / WriteConsoleW.
+- os_file.h / os_file.cpp: files, handles, info, directories, path helpers.
+- os_file_win32.cpp: CreateFileW / FindFirstFileExW / MoveFileExW backend,
+  long-path (\\?\ prefix) handling, per-thread scratch for path conversion.
 - os_crash.h / os_crash.cpp: crash handler, OsCrashRaise, OsStackTraceHere.
 - os_crash_win32.cpp: exception filter, StackWalk64 / MiniDumpWriteDump via
   dbghelp loaded at runtime, CRT abort / invalid parameter / purecall hooks.
 - test/os_crash_test.cpp: `fbuild os-crash-test-debug`; crashes child copies
   of itself and checks the reports.
+- test/os_file_test.cpp: `fbuild os-file-test-debug`; works in a sandbox
+  folder next to the exe.
 - test/os_memory_test.cpp: `fbuild os-memory-test-debug`.

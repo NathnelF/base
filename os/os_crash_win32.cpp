@@ -371,7 +371,8 @@ static String8 OsWin32CrashHeader(Arena *arena, EXCEPTION_RECORD *record)
                      detail);
 }
 
-// <exe without .exe>.crash-YYYYMMDD-HHMMSS.dmp next to the executable.
+// <exe without .exe>.crash-YYYYMMDD-HHMMSS-<pid>.dmp next to the executable
+// (the pid keeps crashes within one second apart).
 // Returns the path, or empty if the dump could not be written.
 static String8 OsWin32WriteMinidump(Arena *arena, String8List *report)
 {
@@ -396,14 +397,15 @@ static String8 OsWin32WriteMinidump(Arena *arena, String8List *report)
     SYSTEMTIME time = {};
     GetLocalTime(&time);
     String8 path = Str8PushF(arena,
-                             "%S.crash-%04u%02u%02u-%02u%02u%02u.dmp",
+                             "%S.crash-%04u%02u%02u-%02u%02u%02u-%u.dmp",
                              exe,
                              (u32)time.wYear,
                              (u32)time.wMonth,
                              (u32)time.wDay,
                              (u32)time.wHour,
                              (u32)time.wMinute,
-                             (u32)time.wSecond);
+                             (u32)time.wSecond,
+                             (u32)GetCurrentProcessId());
     String16 path16 = Str16From8(arena, path);
     HANDLE file = INVALID_HANDLE_VALUE;
     if (path16.size > 0)

@@ -18,7 +18,7 @@
         *** thread 1234 in C:\path\game.exe
         C:\path\file.cpp(42): CrashingFunction
         C:\path\main.cpp(99): main
-        *** minidump: C:\path\game.crash-20261021-153012.dmp
+        *** minidump: C:\path\game.crash-20261021-153012-4321.dmp
     Frame lines use the file(line) form editors open on double-click. The
     minidump goes next to the executable and opens in Visual Studio or WinDbg
     with the matching .pdb. Then os_crash_hook (if set) gets the report and

@@ -22,6 +22,7 @@
 #include "log.h"
 #include "../os/os_crash.h"
 #include "../os/os_debug.h"
+#include "../os/os_file.h"
 #include "../os/os_memory.h"
 
 constexpr u64 LOG_SCRATCH_RESERVE = 1ull << 30;
@@ -269,6 +270,41 @@ static void LogOsMemFailureHook(const char *operation,
     }
 }
 
+static void LogOsFileFailureHook(const char *operation,
+                                 String8 path,
+                                 u32 os_error)
+{
+    if constexpr (LogLevel_Warning >= LOG_MIN_LEVEL)
+    {
+        if (log_thread.in_log)
+        {
+            return;
+        }
+        Arena *scratch = LogScratch();
+        ArenaTemp temp = ArenaTempBegin(scratch);
+        String8 reason = STR8_LIT("no OS error code");
+        if (os_error != 0)
+        {
+            reason = OsErrorMessage(scratch, os_error);
+        }
+        if (path.size > 0)
+        {
+            LOG_WARN("OsFile %s \"%S\" failed: %S", operation, path, reason);
+        }
+        else
+        {
+            LOG_WARN("OsFile %s failed: %S", operation, reason);
+        }
+        ArenaTempEnd(temp);
+    }
+    else
+    {
+        (void)operation;
+        (void)path;
+        (void)os_error;
+    }
+}
+
 static b32 LogInstallHooks(void)
 {
     if (base_assert_hook == 0)
@@ -282,6 +318,10 @@ static b32 LogInstallHooks(void)
     if (os_mem_failure_hook == 0)
     {
         os_mem_failure_hook = LogOsMemFailureHook;
+    }
+    if (os_file_failure_hook == 0)
+    {
+        os_file_failure_hook = LogOsFileFailureHook;
     }
 #if !defined(BASE_NO_CRASH_HANDLER)
     OsCrashHandlerInstall();

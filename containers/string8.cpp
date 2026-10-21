@@ -384,15 +384,22 @@ String8 Str8Join(Arena *arena, String8List *list, String8 separator)
     {
         return result;
     }
-    u64 total = list->total_size;
-    if (list->count > 1)
+    // Size from the nodes themselves, not list->total_size: callers may
+    // edit node strings in place (e.g. trim each piece after a split), and
+    // a stale total would hand back uninitialized bytes.
+    u64 total = 0;
+    for (String8Node *node = list->first; node != 0; node = node->next)
     {
-        u64 gaps = list->count - 1;
-        if (separator.size != 0 && gaps > (~(u64)0 - total) / separator.size)
+        u64 piece = node->string.size;
+        if (node != list->first)
+        {
+            piece += separator.size;
+        }
+        if (piece > ~(u64)0 - total)
         {
             return result;
         }
-        total += gaps * separator.size;
+        total += piece;
     }
     result = Str8PushRaw(arena, total);
     if (result.data == 0)
@@ -431,10 +438,6 @@ static u32 Str8DigitValue(u8 c)
 b32 Str8ToU64(String8 s, u64 *out)
 {
     u64 value = 0;
-    if (out != 0)
-    {
-        *out = 0;
-    }
     u64 base = 10;
     if (s.size >= 2 && s.data[0] == '0' && CharToLower(s.data[1]) == 'x')
     {
@@ -467,10 +470,6 @@ b32 Str8ToU64(String8 s, u64 *out)
 
 b32 Str8ToI64(String8 s, i64 *out)
 {
-    if (out != 0)
-    {
-        *out = 0;
-    }
     b32 negative = 0;
     if (s.size > 0 && (s.data[0] == '-' || s.data[0] == '+'))
     {
@@ -509,10 +508,6 @@ constexpr u64 STR8_TO_F64_MAX_SIZE = 511;
 
 b32 Str8ToF64(String8 s, f64 *out)
 {
-    if (out != 0)
-    {
-        *out = 0;
-    }
     char buffer[STR8_TO_F64_MAX_SIZE + 1];
     if (s.size == 0 || s.size >= sizeof(buffer) || CharIsSpace(s.data[0]))
     {

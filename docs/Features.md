@@ -19,11 +19,16 @@ This document will serve as the master feature list for this repository. Split i
 
 ### Filesystem
 
-- Load files into memory.
-- Write files to disk.
-- List directory files.
-- (Claude) debug: every failure returns a ZII value (empty String8, nil file handle, empty list) and logs a warning with the path and the OS message from OsLastErrorMessage.
-- (Claude) debug: a small reason enum (not found / access denied / already exists / other) in the result struct for callers that branch on why it failed.
+- Load files into memory. - implemented
+- Write files to disk. - implemented (atomic replace, append)
+- List directory files. - implemented
+- File handles with reads / writes at an offset, file info (size, modified time), create / delete / rename, executable and current directory, path helpers - implemented
+- (Claude) debug: every failure returns a ZII value (empty String8, nil file handle, empty list) and logs a warning with the path and the OS message. - implemented
+- (Claude) debug: a small reason enum (not found / access denied / in use / already exists / not empty / other) through an optional out-param for callers that branch on why it failed. - implemented
+- Memory-mapped files
+- Directory change notifications for hot reload
+- Opt-in flush to disk for save files (OsFileWrite is crash-safe, not power-loss-safe)
+- User data directory (%APPDATA% / ~/Library / XDG) for saves and settings
 - (Claude) debug: a file sink for the log, so a crash leaves a log file next to the minidump.
 
 ### Windowing and input

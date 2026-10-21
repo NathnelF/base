@@ -73,7 +73,8 @@ struct String8List
     String8Node *first;
     String8Node *last;
     u64 count;
-    u64 total_size; // sum of every node's string size
+    u64 total_size; // sum of string sizes as pushed; editing nodes in place
+                    // makes it stale (Str8Join does not rely on it)
 };
 
 struct UnicodeDecode
@@ -181,7 +182,10 @@ String8List Str8Split(Arena *arena,
 String8 Str8Join(Arena *arena, String8List *list, String8 separator);
 
 // Parse. Decimal or 0x hex; I64 also takes a leading + or -. Return false
-// (and set *out to 0) on empty input, bad characters or overflow.
+// on empty input, bad characters or overflow, and then leave *out
+// untouched, so parsing straight into a field keeps its default:
+//     if (!Str8ToU64(text, &settings.height)) LOG_WARN(...);
+// out may be null to only validate.
 b32 Str8ToU64(String8 s, u64 *out);
 b32 Str8ToI64(String8 s, i64 *out);
 // The whole string must be a number; no surrounding whitespace. Inputs

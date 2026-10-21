@@ -82,6 +82,16 @@
     <DisplayString>U+{codepoint,Xb} ({advance} units)</DisplayString>
   </Type>
 
+  <Type Name="OsDirectoryEntry">
+    <DisplayString Condition="(info.flags &amp; 1) != 0">{name} (directory)</DisplayString>
+    <DisplayString>{name} ({info.size} bytes)</DisplayString>
+  </Type>
+
+  <Type Name="OsFile">
+    <DisplayString Condition="handle == 0">nil file</DisplayString>
+    <DisplayString>{{ handle={(void *)handle} }}</DisplayString>
+  </Type>
+
   <Type Name="ArenaTemp">
     <DisplayString>{{ pos={pos} arena={(void *)arena} }}</DisplayString>
   </Type>

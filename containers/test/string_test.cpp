@@ -238,6 +238,18 @@ static void TestLists(Arena *arena)
     String8 joined = Str8Join(arena, &none, STR8_LIT(","));
     CHECK(joined.size == 0);
     CHECK(Str8Join(arena, 0, STR8_LIT(",")).size == 0);
+
+    // Editing pieces in place after a split (here: trimming) leaves
+    // total_size stale; Join must size from the pieces, not the total.
+    String8List padded =
+      Str8Split(arena, STR8_LIT(" a , bb ,c "), STR8_LIT(","), 0);
+    for (String8Node *node = padded.first; node != 0; node = node->next)
+    {
+        node->string = Str8Trim(node->string);
+    }
+    String8 trimmed = Str8Join(arena, &padded, STR8_LIT("|"));
+    CHECK_STR(trimmed, "a|bb|c");
+    CHECK(trimmed.data[trimmed.size] == 0);
 }
 
 static void TestParse(void)
@@ -249,7 +261,9 @@ static void TestParse(void)
     CHECK(Str8ToU64(STR8_LIT("0XfF"), &u) && u == 255);
     CHECK(Str8ToU64(STR8_LIT("18446744073709551615"), &u) && u == ~0ull);
     CHECK(Str8ToU64(STR8_LIT("0xFFFFFFFFFFFFFFFF"), &u) && u == ~0ull);
-    CHECK(!Str8ToU64(STR8_LIT("18446744073709551616"), &u) && u == 0);
+    // Failure leaves the output untouched.
+    u = 99;
+    CHECK(!Str8ToU64(STR8_LIT("18446744073709551616"), &u) && u == 99);
     CHECK(!Str8ToU64(STR8_LIT("0x10000000000000000"), &u));
     CHECK(!Str8ToU64(STR8_LIT(""), &u));
     CHECK(!Str8ToU64(STR8_LIT("0x"), &u));
@@ -257,6 +271,7 @@ static void TestParse(void)
     CHECK(!Str8ToU64(STR8_LIT(" 12"), &u));
     CHECK(!Str8ToU64(STR8_LIT("-1"), &u));
     CHECK(!Str8ToU64(STR8_LIT("ff"), &u));
+    CHECK(u == 99);
 
     i64 i = 99;
     CHECK(Str8ToI64(STR8_LIT("-42"), &i) && i == -42);
@@ -266,20 +281,31 @@ static void TestParse(void)
           i == 0x7FFFFFFFFFFFFFFFll);
     CHECK(Str8ToI64(STR8_LIT("-9223372036854775808"), &i) &&
           i == (i64)0x8000000000000000ull);
-    CHECK(!Str8ToI64(STR8_LIT("9223372036854775808"), &i) && i == 0);
+    i = -7;
+    CHECK(!Str8ToI64(STR8_LIT("9223372036854775808"), &i) && i == -7);
     CHECK(!Str8ToI64(STR8_LIT("-9223372036854775809"), &i));
     CHECK(!Str8ToI64(STR8_LIT("-"), &i));
     CHECK(!Str8ToI64(STR8_LIT("--5"), &i));
     CHECK(!Str8ToI64(STR8_LIT("+-5"), &i));
+    CHECK(i == -7);
 
     f64 f = 99;
     CHECK(Str8ToF64(STR8_LIT("3.5"), &f) && f == 3.5);
     CHECK(Str8ToF64(STR8_LIT("-0.25"), &f) && f == -0.25);
     CHECK(Str8ToF64(STR8_LIT("1e3"), &f) && f == 1000.0);
-    CHECK(!Str8ToF64(STR8_LIT(" 3.5"), &f) && f == 0);
+    f = 2.5;
+    CHECK(!Str8ToF64(STR8_LIT(" 3.5"), &f) && f == 2.5);
     CHECK(!Str8ToF64(STR8_LIT("3.5x"), &f));
     CHECK(!Str8ToF64(STR8_LIT(""), &f));
     CHECK(!Str8ToF64(STR8_LIT("abc"), &f));
+    CHECK(f == 2.5);
+
+    // The pattern this enables: parse straight into a field that holds a
+    // default; a bad value keeps the default, a good one replaces it.
+    u64 height = 720;
+    CHECK(!Str8ToU64(STR8_LIT("tall"), &height) && height == 720);
+    CHECK(Str8ToU64(STR8_LIT("1440"), &height) && height == 1440);
+    CHECK(!Str8ToU64(STR8_LIT("tall"), &height) && height == 1440);
 
     // Long inputs work up to 511 bytes, then fail.
     u8 long_number[600];

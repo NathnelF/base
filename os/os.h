@@ -10,4 +10,5 @@
 
 #include "os_crash.h"
 #include "os_debug.h"
+#include "os_file.h"
 #include "os_memory.h"

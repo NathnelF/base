@@ -33,7 +33,8 @@
     "file(line): assert: expression: message", then breaks),
     arena_failure_hook (a warning for a failed ArenaAlloc, and for the first
     failed push of each arena) and os_mem_failure_hook (a warning naming the
-    failed reserve / commit / decommit / release with the OS's reason). It
+    failed reserve / commit / decommit / release with the OS's reason) and
+    os_file_failure_hook (a warning with the file path and the OS's reason). It
    leaves alone any hook already set. It also installs the crash handler
    (os_crash.h) unless BASE_NO_CRASH_HANDLER is defined.
 
