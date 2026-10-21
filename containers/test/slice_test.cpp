@@ -16,7 +16,7 @@
 #include <stdio.h>
 
 #include "../../architecture/architecture.cpp"
-#include "../../os/os.cpp"
+#include "../../os/os_memory.cpp"
 #include "../containers.cpp"
 
 static int test_failures = 0;
@@ -31,6 +31,29 @@ static int test_failures = 0;
         }                                                                      \
     } while (0)
 
+// Counts failed asserts instead of breaking, for tests that trigger them on
+// purpose. Asserts only exist in debug, so expectations are 0 elsewhere.
+static int assert_failures = 0;
+
+static b32 TestCountAssert(const char *file,
+                           int line,
+                           const char *expression,
+                           const char *message)
+{
+    (void)file;
+    (void)line;
+    (void)expression;
+    (void)message;
+    ++assert_failures;
+    return 0;
+}
+
+#if defined(NDEBUG)
+#define EXPECT_ASSERTS(count) CHECK(assert_failures == 0)
+#else
+#define EXPECT_ASSERTS(count) CHECK(assert_failures == (count))
+#endif
+
 struct TestVec
 {
     f32 x;
@@ -41,6 +64,7 @@ struct TestVec
 
 int main(void)
 {
+    base_assert_hook = TestCountAssert;
     Arena *arena = ArenaAllocDefault();
 
     // Push: zeroed, aligned, indexable.
@@ -118,6 +142,8 @@ int main(void)
     CHECK(from_nil.count == 0 && from_nil.data == 0);
     Slice<TestVec> overflow = SlicePush<TestVec>(arena, ~(u64)0 / 4);
     CHECK(overflow.count == 0 && overflow.data == 0);
+    EXPECT_ASSERTS(1); // an overflowing count is a programmer bug
+    assert_failures = 0;
     Arena *small = ArenaAlloc(64 * 1024);
     Slice<u8> too_big = SlicePushNoZero<u8>(small, 128 * 1024);
     CHECK(too_big.count == 0 && too_big.data == 0);

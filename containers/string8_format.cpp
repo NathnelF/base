@@ -24,9 +24,11 @@
              .precision (digits or *): max bytes for %s / %S, digits for
              floats.
 
-    An unknown specifier is copied to the output as written and consumes no
-    argument. Passing arguments that do not match the specifiers is the
-    caller's bug, exactly as with printf.
+    An unknown specifier, or a format that ends in the middle of one, is a
+    typo in the format string: it ASSERTs (once, in the counting pass), then
+    is copied to the output as written and consumes no argument. Passing
+   arguments that do not match the specifiers is the caller's bug, exactly as
+   with printf.
 
     NOTE: Floats go through the CRT's snprintf one specifier at a time, so
     they follow the C locale's decimal point. Float precision is capped at 64
@@ -38,6 +40,7 @@
 
 #include <stdio.h>
 
+#include "../types/base_assert.h"
 #include "../types/base_memory.h"
 #include "string8.h"
 
@@ -251,9 +254,16 @@ static void Str8FormatRun(Str8FormatWriter *writer,
         }
 
         u8 conversion = *at;
+        // Typos assert in the counting pass only, so once per bad specifier.
+        b32 counting_pass = writer->buffer == 0;
         if (conversion == 0)
         {
             // Format ended mid-specifier: copy what was there.
+            if (counting_pass)
+            {
+                ASSERT_FAILED_MSG(
+                  "Str8PushF: format string ends inside a specifier");
+            }
             Str8FormatPutString(
               writer, Str8Make((u8 *)spec_start, (u64)(at - spec_start)));
             break;
@@ -437,6 +447,10 @@ static void Str8FormatRun(Str8FormatWriter *writer,
 
             default:
             {
+                if (counting_pass)
+                {
+                    ASSERT_FAILED_MSG("Str8PushF: unknown format specifier");
+                }
                 Str8FormatPutString(
                   writer, Str8Make((u8 *)spec_start, (u64)(at - spec_start)));
             }

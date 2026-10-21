@@ -23,6 +23,12 @@
     zero value (null pointer or false), so callers can pass results straight
     back in without checks. OsMemGetInfo needs no init call.
 
+    Failures are not silent: every failed OS call (and a reserve size that
+    overflows) goes to os_mem_failure_hook with the OS error code (0 when
+    there is none). The log layer installs a hook that logs a warning with
+    the system's message for that code. An unaligned OsMemReserveAt hint is
+    a programmer bug: it ASSERTs, then returns null.
+
     NOTE: Every name here starts with OsMem; the whole of base is one
     translation unit.
 
@@ -35,6 +41,15 @@
 
 #include "../architecture/arch_context.h"
 #include "../types/base_types.h"
+
+// operation is "reserve", "commit", "decommit", "release" or
+// "reserve (size overflows)"; os_error is the OS error code, 0 if none.
+typedef void OsMemFailureHookFunction(const char *operation,
+                                      void *ptr,
+                                      u64 size,
+                                      u32 os_error);
+
+inline OsMemFailureHookFunction *os_mem_failure_hook = 0;
 
 struct OsMemInfo
 {
@@ -50,8 +65,8 @@ void *OsMemReserve(u64 size);
 
 // Like OsMemReserve but asks for a specific base address, for stable
 // addresses across debug reloads. The hint must be a multiple of
-// reserve_granularity. Null if the hint is unaligned or already taken; it
-// never falls back to a different address.
+// reserve_granularity (an unaligned hint ASSERTs). Null if the hint is
+// unaligned or already taken; it never falls back to a different address.
 void *OsMemReserveAt(void *hint, u64 size);
 
 b32 OsMemCommit(void *ptr, u64 size);

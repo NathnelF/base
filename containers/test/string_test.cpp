@@ -13,7 +13,7 @@
 #include <stdio.h>
 
 #include "../../architecture/architecture.cpp"
-#include "../../os/os.cpp"
+#include "../../os/os_memory.cpp"
 #include "../containers.cpp"
 
 static int test_failures = 0;
@@ -44,6 +44,29 @@ static int test_failures = 0;
             ++test_failures;                                                   \
         }                                                                      \
     } while (0)
+
+// Counts failed asserts instead of breaking, for tests that trigger them on
+// purpose. Asserts only exist in debug, so expectations are 0 elsewhere.
+static int assert_failures = 0;
+
+static b32 TestCountAssert(const char *file,
+                           int line,
+                           const char *expression,
+                           const char *message)
+{
+    (void)file;
+    (void)line;
+    (void)expression;
+    (void)message;
+    ++assert_failures;
+    return 0;
+}
+
+#if defined(NDEBUG)
+#define EXPECT_ASSERTS(count) CHECK(assert_failures == 0)
+#else
+#define EXPECT_ASSERTS(count) CHECK(assert_failures == (count))
+#endif
 
 static void TestMake(Arena *arena)
 {
@@ -258,6 +281,17 @@ static void TestParse(void)
     CHECK(!Str8ToF64(STR8_LIT(""), &f));
     CHECK(!Str8ToF64(STR8_LIT("abc"), &f));
 
+    // Long inputs work up to 511 bytes, then fail.
+    u8 long_number[600];
+    long_number[0] = '1';
+    long_number[1] = '.';
+    for (u64 digit = 2; digit < sizeof(long_number); ++digit)
+    {
+        long_number[digit] = '0';
+    }
+    CHECK(Str8ToF64(Str8Make(long_number, 511), &f) && f == 1.0);
+    CHECK(!Str8ToF64(Str8Make(long_number, 512), &f));
+
     // Parsing a view stops at the view's end, not at a terminator.
     String8 view = Str8Prefix(STR8_LIT("12345"), 3);
     CHECK(Str8ToU64(view, &u) && u == 123);
@@ -299,8 +333,16 @@ static void TestFormat(Arena *arena)
               "he|   ab|ab   |");
     CHECK_STR(Str8PushF(arena, "%p", (void *)0x1234), "0x0000000000001234");
     CHECK_STR(Str8PushF(arena, "100%%"), "100%");
+    // Format typos assert once each (in the counting pass), then pass
+    // through as written.
+    assert_failures = 0;
     CHECK_STR(Str8PushF(arena, "%q %d", 5), "%q 5");
+    EXPECT_ASSERTS(1);
     CHECK_STR(Str8PushF(arena, "end%"), "end%");
+    EXPECT_ASSERTS(2);
+    assert_failures = 0;
+    CHECK_STR(Str8PushF(arena, "%d%% ok", 5), "5% ok");
+    CHECK(assert_failures == 0);
 
     String8 name = STR8_LIT("world");
     String8 view = Str8Prefix(STR8_LIT("abcdef"), 3);
@@ -416,6 +458,7 @@ static void TestFailure(void)
 
 int main(void)
 {
+    base_assert_hook = TestCountAssert;
     Arena *arena = ArenaAllocDefault();
 
     TestMake(arena);

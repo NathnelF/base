@@ -4,7 +4,10 @@
     Platform-independent half of os_memory.h: size rounding, the cached
     OsMemInfo, and the ZII guards. The OS calls themselves come from the
     backend included below, which provides OsMem<Os>QueryInfo, Reserve,
-    Commit, Decommit and Release.
+    Commit, Decommit, Release and LastError.
+
+    Every OS call that fails is reported through os_mem_failure_hook with the
+    OS error code, captured right after the failing call.
 
     NOTE: OsMemGetInfo fills its global without a lock. A caller only trusts
     the global once every field is nonzero, so a reader that sees a partly
@@ -12,6 +15,7 @@
 */
 
 #include "os_memory.h"
+#include "../types/base_assert.h"
 
 #include "os_memory_win32.cpp"
 
@@ -21,11 +25,23 @@
 #define OsMemBackendCommit OsMemWin32Commit
 #define OsMemBackendDecommit OsMemWin32Decommit
 #define OsMemBackendRelease OsMemWin32Release
+#define OsMemBackendLastError OsMemWin32LastError
 #else
 #error "os_memory: no backend for this OS yet"
 #endif
 
 static OsMemInfo os_mem_info;
+
+static void OsMemReportFailure(const char *operation,
+                               void *ptr,
+                               u64 size,
+                               u32 error)
+{
+    if (os_mem_failure_hook != 0)
+    {
+        os_mem_failure_hook(operation, ptr, size, error);
+    }
+}
 
 // Rounds value up to a power-of-two alignment. Returns 0 on overflow.
 static u64 OsMemRoundUp(u64 value, u64 alignment)
@@ -57,16 +73,25 @@ void *OsMemReserveAt(void *hint, u64 size)
     }
     OsMemInfo *info = OsMemGetInfo();
     // Windows silently rounds an unaligned hint down; refuse it instead.
-    if (((uptr)hint & (info->reserve_granularity - 1)) != 0)
+    b32 hint_aligned = ((uptr)hint & (info->reserve_granularity - 1)) == 0;
+    ASSERT_MSG(hint_aligned,
+               "OsMemReserveAt: hint is not a multiple of reserve_granularity");
+    if (!hint_aligned)
     {
         return 0;
     }
     u64 rounded = OsMemRoundUp(size, info->reserve_granularity);
     if (rounded == 0)
     {
+        OsMemReportFailure("reserve (size overflows)", hint, size, 0);
         return 0;
     }
-    return OsMemBackendReserve(hint, rounded);
+    void *result = OsMemBackendReserve(hint, rounded);
+    if (result == 0)
+    {
+        OsMemReportFailure("reserve", hint, rounded, OsMemBackendLastError());
+    }
+    return result;
 }
 
 void *OsMemReserve(u64 size)
@@ -131,7 +156,12 @@ b32 OsMemCommit(void *ptr, u64 size)
     {
         return 0;
     }
-    return OsMemBackendCommit(ptr, size);
+    b32 result = OsMemBackendCommit(ptr, size);
+    if (!result)
+    {
+        OsMemReportFailure("commit", ptr, size, OsMemBackendLastError());
+    }
+    return result;
 }
 
 // Rounds inward: decommitting a partly covered page would destroy the bytes
@@ -140,7 +170,10 @@ void OsMemDecommit(void *ptr, u64 size)
 {
     if (OsMemPageRangeInner(&ptr, &size))
     {
-        OsMemBackendDecommit(ptr, size);
+        if (!OsMemBackendDecommit(ptr, size))
+        {
+            OsMemReportFailure("decommit", ptr, size, OsMemBackendLastError());
+        }
     }
 }
 
@@ -148,7 +181,10 @@ void OsMemRelease(void *ptr, u64 size)
 {
     if (ptr != 0)
     {
-        OsMemBackendRelease(ptr, size);
+        if (!OsMemBackendRelease(ptr, size))
+        {
+            OsMemReportFailure("release", ptr, size, OsMemBackendLastError());
+        }
     }
 }
 

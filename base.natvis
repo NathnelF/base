@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    base.natvis
+
+    Debugger views for base's types (Visual Studio; RAD Debugger and
+    RemedyBG read natvis too). Embed it in a program's PDB by linking with:
+        /NATVIS:path\to\base\base.natvis
+    base's own tests do this in fbuild.bff.
+-->
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+
+  <Type Name="String8">
+    <DisplayString Condition="size == 0">""</DisplayString>
+    <DisplayString>{(char *)data,[size]s8}</DisplayString>
+    <StringView>(char *)data,[size]s8</StringView>
+    <Expand>
+      <Item Name="size">size</Item>
+      <ArrayItems>
+        <Size>size</Size>
+        <ValuePointer>data</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+  <Type Name="String16">
+    <DisplayString Condition="size == 0">L""</DisplayString>
+    <DisplayString>{(wchar_t *)data,[size]su}</DisplayString>
+    <StringView>(wchar_t *)data,[size]su</StringView>
+    <Expand>
+      <Item Name="size">size</Item>
+      <ArrayItems>
+        <Size>size</Size>
+        <ValuePointer>data</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+  <Type Name="Slice&lt;*&gt;">
+    <DisplayString>{{ count={count} }}</DisplayString>
+    <Expand>
+      <Item Name="count">count</Item>
+      <ArrayItems>
+        <Size>count</Size>
+        <ValuePointer>data</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+  <Type Name="String8List">
+    <DisplayString>{{ count={count} total_size={total_size} }}</DisplayString>
+    <Expand>
+      <LinkedListItems>
+        <Size>count</Size>
+        <HeadPointer>first</HeadPointer>
+        <NextPointer>next</NextPointer>
+        <ValueNode>string</ValueNode>
+      </LinkedListItems>
+    </Expand>
+  </Type>
+
+  <Type Name="Arena">
+    <DisplayString Condition="reserved == 0">nil arena</DisplayString>
+    <DisplayString>{{ used={pos - 64} peak={peak_pos - 64} committed={committed} reserved={reserved} }}</DisplayString>
+    <Expand>
+      <Item Name="used" Condition="reserved != 0">pos - 64</Item>
+      <Item Name="peak" Condition="reserved != 0">peak_pos - 64</Item>
+      <Item Name="committed">committed</Item>
+      <Item Name="reserved">reserved</Item>
+      <Item Name="commit_chunk">commit_chunk</Item>
+      <Item Name="push_failed">push_failed</Item>
+      <Item Name="base">(void *)base</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="String8Node">
+    <DisplayString>{string}</DisplayString>
+  </Type>
+
+  <Type Name="UnicodeDecode">
+    <DisplayString Condition="advance == 0">end of input</DisplayString>
+    <DisplayString Condition="codepoint == 0xFFFD">U+FFFD (invalid input, {advance} unit)</DisplayString>
+    <DisplayString>U+{codepoint,Xb} ({advance} units)</DisplayString>
+  </Type>
+
+  <Type Name="ArenaTemp">
+    <DisplayString>{{ pos={pos} arena={(void *)arena} }}</DisplayString>
+  </Type>
+
+</AutoVisualizer>

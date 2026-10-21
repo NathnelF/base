@@ -6,7 +6,10 @@
     base.cpp includes this, and so do the layer tests.
 */
 
+// Dependency order (string8_format.cpp uses string8.cpp's statics).
+// clang-format off
 #include "arena.cpp"
 #include "slice.h"
 #include "string8.cpp"
 #include "string8_format.cpp"
+// clang-format on

@@ -12,7 +12,7 @@
 #include <stdio.h>
 
 #include "../../architecture/architecture.cpp"
-#include "../../os/os.cpp"
+#include "../../os/os_memory.cpp"
 #include "../containers.cpp"
 
 static int test_failures = 0;
@@ -27,6 +27,29 @@ static int test_failures = 0;
         }                                                                      \
     } while (0)
 
+// Counts failed asserts instead of breaking, for tests that trigger them on
+// purpose. Asserts only exist in debug, so expectations are 0 elsewhere.
+static int assert_failures = 0;
+
+static b32 TestCountAssert(const char *file,
+                           int line,
+                           const char *expression,
+                           const char *message)
+{
+    (void)file;
+    (void)line;
+    (void)expression;
+    (void)message;
+    ++assert_failures;
+    return 0;
+}
+
+#if defined(NDEBUG)
+#define EXPECT_ASSERTS(count) CHECK(assert_failures == 0)
+#else
+#define EXPECT_ASSERTS(count) CHECK(assert_failures == (count))
+#endif
+
 struct TestVec
 {
     f32 x;
@@ -34,6 +57,18 @@ struct TestVec
     f32 z;
     f32 w;
 };
+
+static int arena_failures = 0;
+static Arena *arena_failure_last_arena = 0;
+static u64 arena_failure_last_size = 0;
+
+static void TestArenaFailureHook(Arena *arena, u64 size, const char *reason)
+{
+    (void)reason;
+    ++arena_failures;
+    arena_failure_last_arena = arena;
+    arena_failure_last_size = size;
+}
 
 static b32 TestIsZero(u8 *bytes, u64 count)
 {
@@ -51,6 +86,7 @@ int main(void)
 {
     const u64 KB = 1024;
     const u64 MB = 1024 * KB;
+    base_assert_hook = TestCountAssert;
 
     // Basic push: zeroed, aligned, in order.
     Arena *arena = ArenaAllocDefault();
@@ -88,8 +124,11 @@ int main(void)
     CHECK(((uptr)big_aligned & (1 * MB - 1)) == 0);
 
     // Array pushes reject element counts whose byte size overflows.
+    // An overflowing count is a programmer bug: it asserts, then fails.
     CHECK(ArenaPushArray<TestVec>(arena, ~(u64)0 / 4) == 0);
     CHECK(ArenaPushArrayNoZero<TestVec>(arena, ~(u64)0 / 4) == 0);
+    EXPECT_ASSERTS(2);
+    assert_failures = 0;
     TestVec *vecs = ArenaPushArray<TestVec>(arena, 10);
     CHECK(!ArenaPushFailed(vecs) && ((uptr)vecs & 3) == 0);
     CHECK(TestIsZero((u8 *)vecs, 10 * sizeof(TestVec)));
@@ -138,7 +177,10 @@ int main(void)
     CHECK(small->pos == pos_before);
     CHECK(ArenaPush(small, ARENA_NIL_BLOCK_SIZE + 1, 8) == 0);
     CHECK(ArenaPush(small, ~(u64)0, 8) == 0);
+    assert_failures = 0;
     CHECK(ArenaPush(small, 16, 3) == arena_nil_block); // bad alignment
+    EXPECT_ASSERTS(1);
+    assert_failures = 0;
     CHECK(small->pos == pos_before);
     ArenaRelease(small);
 
@@ -162,6 +204,88 @@ int main(void)
     CHECK(ArenaPush(0, 16, 8) == arena_nil_block);
     ArenaClear(0);
     ArenaRelease(0);
+
+    // Popping forward means temps ended out of order: assert, then ignore.
+    Arena *ordered = ArenaAlloc(1 * MB);
+    assert_failures = 0;
+    ArenaTemp outer = ArenaTempBegin(ordered);
+    ArenaPush(ordered, 100, 1);
+    ArenaTemp inner = ArenaTempBegin(ordered);
+    ArenaPush(ordered, 100, 1);
+    ArenaTempEnd(outer);
+    CHECK(ArenaUsed(ordered) == 0);
+    EXPECT_ASSERTS(0);
+    ArenaTempEnd(inner); // after outer: tries to move forward
+    EXPECT_ASSERTS(1);
+    CHECK(ArenaUsed(ordered) == 0);
+    ArenaPopTo(ordered, ordered->pos + 1000);
+    EXPECT_ASSERTS(2);
+    CHECK(ArenaUsed(ordered) == 0);
+    ArenaRelease(ordered);
+    assert_failures = 0;
+    ArenaClear(0); // the nil arena may always be cleared
+    ArenaTempEnd(ArenaTempBegin(0));
+    CHECK(assert_failures == 0);
+
+    // Peak tracks the high-water mark across pops.
+    Arena *peaky = ArenaAlloc(1 * MB);
+    CHECK(ArenaPeak(peaky) == 0);
+    ArenaPush(peaky, 1000, 1);
+    u64 mark = peaky->pos;
+    u8 *scratch = (u8 *)ArenaPush(peaky, 256, 1);
+    scratch[0] = 1;
+    scratch[255] = 1;
+    CHECK(ArenaPeak(peaky) == 1256);
+    ArenaPopTo(peaky, mark);
+    CHECK(ArenaUsed(peaky) == 1000 && ArenaPeak(peaky) == 1256);
+    ArenaPush(peaky, 100, 1);
+    CHECK(ArenaPeak(peaky) == 1256);
+    ArenaClear(peaky);
+    CHECK(ArenaPeak(peaky) == 1256);
+    CHECK(ArenaPeak(0) == 0);
+
+    // Debug builds fill popped memory so stale views stand out. Under ASan
+    // the stale read below is reported as use-after-poison instead.
+#if ARENA_DEBUG_FILL
+    u64 fill_mark = peaky->pos;
+    u8 *stale = (u8 *)ArenaPush(peaky, 64, 1);
+    stale[0] = 7;
+    ArenaPopTo(peaky, fill_mark);
+    CHECK(stale[0] == 0xDD && stale[63] == 0xDD);
+    // A normal push over the filled range is zeroed again.
+    u8 *fresh = (u8 *)ArenaPush(peaky, 64, 1);
+    CHECK(fresh == stale && TestIsZero(fresh, 64));
+#endif
+    ArenaRelease(peaky);
+
+    // The failure hook fires for a failed alloc, then once per real arena.
+    arena_failure_hook = TestArenaFailureHook;
+    Arena *failed = ArenaAlloc(~(u64)0);
+    CHECK(arena_failures == 1 && ArenaIsNil(arena_failure_last_arena));
+    CHECK(arena_failure_last_size == ~(u64)0);
+    ArenaPush(failed, 16, 8); // nil arena: already reported by ArenaAlloc
+    CHECK(arena_failures == 1);
+
+    Arena *tiny = ArenaAlloc(64 * KB);
+    ArenaPush(tiny, 128 * KB, 8);
+    CHECK(arena_failures == 2 && arena_failure_last_arena == tiny);
+    CHECK(arena_failure_last_size == 128 * KB);
+    CHECK(tiny->push_failed);
+    ArenaPush(tiny, 128 * KB, 8);
+    ArenaPush(tiny, 16, 3);
+    CHECK(arena_failures == 2);
+    // A count overflow reports like a failed push (once per arena).
+    Arena *counted = ArenaAlloc(64 * KB);
+    ArenaPushArray<TestVec>(counted, ~(u64)0 / 4);
+    CHECK(arena_failures == 3 && arena_failure_last_arena == counted);
+    ArenaRelease(counted);
+    arena_failures = 2;
+    ArenaRelease(tiny);
+
+    Arena zero_arena = {};
+    ArenaPush(&zero_arena, 16, 8); // zero Arena: never written, never reported
+    CHECK(arena_failures == 2 && zero_arena.push_failed == 0);
+    arena_failure_hook = 0;
 
     if (test_failures == 0)
     {

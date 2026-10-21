@@ -44,8 +44,9 @@
                     + ' /W4'           // Warning level 4
                     + ' /Qvec-report:2' // Report which loops were / weren't vectorized
                     + ' /fp:fast'
+                    + ' /DLOG_MIN_LEVEL=3' // Errors only, keep logging out of timings
 
-.Linker             = '$VSBasePath$\link.exe'
+.Linker            = '$VSBasePath$\link.exe'
 
 .LinkerOptionsCommon  = ' /OUT:"%2"'     // Output
                     + ' "%1"'          // Input
@@ -54,7 +55,8 @@
                     // System libraries, so the build doesn't depend on vcvars64.bat having set LIB
                     + ' /LIBPATH:"$MSVCPath$\lib\x64"'                  // C/C++ runtime
                     + ' /LIBPATH:"$SDKPath$\Lib\$SDKVersion$\ucrt\x64"' // C runtime
-                    + ' /LIBPATH:"$SDKPath$\Lib\$SDKVersion$\um\x64" '  // kernel32.lib etc.
+                    + ' /LIBPATH:"$SDKPath$\Lib\$SDKVersion$\um\x64"'   // kernel32.lib etc.
+                    + ' /NATVIS:"$_WORKING_DIR_$\base.natvis" '       // Debugger views, embedded in the .pdb
 
 .LinkerOptionsDebug = '$LinkerOptionsCommon$' + '/DEBUG'
 .LinkerOptionsRelease = '$LinkerOptionsCommon$' + ' /DEBUG /OPT:REF /OPT:ICF'
@@ -148,9 +150,33 @@ ForEach( .Config in .Configs )
         .Libraries          = { 'string-test-obj-$ConfigName$' }
         .LinkerOutput       = 'bin\$ConfigName$\string_test\string_test.exe'
     }
+
+    ObjectList( 'log-test-obj-$ConfigName$' )
+    {
+        .CompilerInputFiles = { 'log\test\log_test.cpp' }
+        .CompilerOutputPath = 'bin\$ConfigName$\log_test\'
+    }
+
+    Executable( 'log-test-$ConfigName$' )
+    {
+        .Libraries          = { 'log-test-obj-$ConfigName$' }
+        .LinkerOutput       = 'bin\$ConfigName$\log_test\log_test.exe'
+    }
+
+    ObjectList( 'os-crash-test-obj-$ConfigName$' )
+    {
+        .CompilerInputFiles = { 'os\test\os_crash_test.cpp' }
+        .CompilerOutputPath = 'bin\$ConfigName$\os_crash_test\'
+    }
+
+    Executable( 'os-crash-test-$ConfigName$' )
+    {
+        .Libraries          = { 'os-crash-test-obj-$ConfigName$' }
+        .LinkerOutput       = 'bin\$ConfigName$\os_crash_test\os_crash_test.exe'
+    }
 }
 
-Alias( 'debug' )   { .Targets = { 'arch-test-debug', 'os-memory-test-debug', 'arena-test-debug', 'slice-test-debug', 'string-test-debug' } }
-Alias( 'release' ) { .Targets = { 'arch-test-release', 'os-memory-test-release', 'arena-test-release', 'slice-test-release', 'string-test-release' } }
-Alias( 'profile' ) { .Targets = { 'arch-test-profile', 'os-memory-test-profile', 'arena-test-profile', 'slice-test-profile', 'string-test-profile' } }
+Alias( 'debug' )   { .Targets = { 'arch-test-debug', 'os-memory-test-debug', 'arena-test-debug', 'slice-test-debug', 'string-test-debug', 'log-test-debug', 'os-crash-test-debug' } }
+Alias( 'release' ) { .Targets = { 'arch-test-release', 'os-memory-test-release', 'arena-test-release', 'slice-test-release', 'string-test-release', 'log-test-release', 'os-crash-test-release' } }
+Alias( 'profile' ) { .Targets = { 'arch-test-profile', 'os-memory-test-profile', 'arena-test-profile', 'slice-test-profile', 'string-test-profile', 'log-test-profile', 'os-crash-test-profile' } }
 Alias( 'all' )     { .Targets = { 'debug', 'release', 'profile' } }

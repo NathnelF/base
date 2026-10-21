@@ -505,13 +505,15 @@ b32 Str8ToI64(String8 s, i64 *out)
     return 1;
 }
 
+constexpr u64 STR8_TO_F64_MAX_SIZE = 511;
+
 b32 Str8ToF64(String8 s, f64 *out)
 {
     if (out != 0)
     {
         *out = 0;
     }
-    char buffer[64];
+    char buffer[STR8_TO_F64_MAX_SIZE + 1];
     if (s.size == 0 || s.size >= sizeof(buffer) || CharIsSpace(s.data[0]))
     {
         return 0;

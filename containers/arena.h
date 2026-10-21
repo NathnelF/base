@@ -34,7 +34,24 @@
     is acceptable for a last-resort fallback, but never rely on its contents.
 
     Alignment is a power of two and 0 means none. It applies to the returned
-    address, so any alignment works. A non power of two counts as failure.
+    address, so any alignment works.
+
+    Programmer bugs ASSERT, then fail the ZII way so release keeps running:
+    - an alignment that is not a power of two (the push fails),
+    - ArenaPushArray<T> with a count whose byte size overflows u64 (returns
+      null, and is reported through the failure hook like a failed push),
+    - ArenaPopTo / ArenaTempEnd to a position past the current one, which
+      means temps were ended out of order or the arena was cleared in
+      between (ignored).
+
+    Failures are not silent: arena_failure_hook (installed by the log layer)
+    reports a failed ArenaAlloc, and the first failed push of each arena.
+
+    Debugging: in debug builds popped memory is filled with 0xDD, so reads
+    through a slice or string that outlived its pop show up as 0xDDDD...
+    instead of plausible old data. Under AddressSanitizer the arena poisons
+    everything outside [header, pos) instead, so those reads are reported
+    at the faulting line. ArenaPeak gives the high-water mark for sizing.
 
     NOTE: Every name here starts with Arena or ARENA; the whole of base is one
     translation unit.
@@ -44,6 +61,7 @@
 
 #pragma once
 
+#include "../types/base_assert.h"
 #include "../types/base_types.h"
 
 constexpr u64 ARENA_HEADER_SIZE = 64;
@@ -58,9 +76,20 @@ struct Arena
     u64 committed;
     u64 pos; // offset from base; never below ARENA_HEADER_SIZE once allocated
     u64 commit_chunk;
+    u64 peak_pos;    // highest pos ever reached
+    b32 push_failed; // set on the first failed push, so it is reported once
 };
 
 static_assert(sizeof(Arena) <= ARENA_HEADER_SIZE, "Arena header too big");
+
+// Called when ArenaAlloc fails (arena is the nil arena, size the requested
+// reserve) and on the first failed push of each real arena. The log layer
+// installs one that logs a warning; base_assert_hook explains the pattern.
+typedef void ArenaFailureHookFunction(Arena *arena,
+                                      u64 size,
+                                      const char *reason);
+
+inline ArenaFailureHookFunction *arena_failure_hook = 0;
 
 // A saved position, for scoped allocations.
 struct ArenaTemp
@@ -83,8 +112,13 @@ void *ArenaPushNoZero(Arena *arena, u64 size, u64 align);
 // True for null or the shared nil scratch, i.e. any push that failed.
 b32 ArenaPushFailed(void *ptr);
 
+// Reports an ArenaPushArray<T> count overflow; used by the templates.
+void ArenaReportCountOverflow(Arena *arena, u64 count, u64 element_size);
+
 // Bytes in use, header excluded.
 u64 ArenaUsed(Arena *arena);
+// Most bytes ever in use at once, header excluded.
+u64 ArenaPeak(Arena *arena);
 
 void ArenaPop(Arena *arena, u64 size);
 void ArenaPopTo(Arena *arena, u64 pos);
@@ -104,6 +138,7 @@ T *ArenaPushArray(Arena *arena, u64 count)
 {
     if (count > ~(u64)0 / sizeof(T))
     {
+        ArenaReportCountOverflow(arena, count, sizeof(T));
         return 0;
     }
     return (T *)ArenaPush(arena, sizeof(T) * count, alignof(T));
@@ -114,6 +149,7 @@ T *ArenaPushArrayNoZero(Arena *arena, u64 count)
 {
     if (count > ~(u64)0 / sizeof(T))
     {
+        ArenaReportCountOverflow(arena, count, sizeof(T));
         return 0;
     }
     return (T *)ArenaPushNoZero(arena, sizeof(T) * count, alignof(T));

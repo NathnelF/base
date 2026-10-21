@@ -40,15 +40,20 @@ static b32 OsMemWin32Commit(void *ptr, u64 size)
     return result != 0;
 }
 
-static void OsMemWin32Decommit(void *ptr, u64 size)
+static b32 OsMemWin32Decommit(void *ptr, u64 size)
 {
-    VirtualFree(ptr, (SIZE_T)size, MEM_DECOMMIT);
+    return VirtualFree(ptr, (SIZE_T)size, MEM_DECOMMIT) != 0;
 }
 
-static void OsMemWin32Release(void *ptr, u64 size)
+static b32 OsMemWin32Release(void *ptr, u64 size)
 {
     (void)size;
-    VirtualFree(ptr, 0, MEM_RELEASE);
+    return VirtualFree(ptr, 0, MEM_RELEASE) != 0;
+}
+
+static u32 OsMemWin32LastError(void)
+{
+    return GetLastError();
 }
 
 #endif

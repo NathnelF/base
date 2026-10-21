@@ -184,7 +184,9 @@ String8 Str8Join(Arena *arena, String8List *list, String8 separator);
 // (and set *out to 0) on empty input, bad characters or overflow.
 b32 Str8ToU64(String8 s, u64 *out);
 b32 Str8ToI64(String8 s, i64 *out);
-// The whole string must be a number; no surrounding whitespace.
+// The whole string must be a number; no surrounding whitespace. Inputs
+// longer than 511 bytes fail (they are copied to a stack buffer for strtod;
+// no real float literal needs more).
 b32 Str8ToF64(String8 s, f64 *out);
 
 // 64-bit FNV-1a. TODO: a faster hash (wyhash / rapidhash) for hash tables.
