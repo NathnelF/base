@@ -95,36 +95,4 @@ void OsDebuggerWrite(String8 text)
     OsWin32WriteWide(text, 0);
 }
 
-void OsStdErrWrite(String8 text)
-{
-    HANDLE handle = GetStdHandle(STD_ERROR_HANDLE);
-    if (handle == 0 || handle == INVALID_HANDLE_VALUE)
-    {
-        return;
-    }
-    DWORD mode = 0;
-    if (GetConsoleMode(handle, &mode))
-    {
-        OsWin32WriteWide(text, handle);
-        return;
-    }
-    // Redirected to a file or pipe: write the UTF-8 bytes unchanged.
-    u64 offset = 0;
-    while (offset < text.size)
-    {
-        u64 chunk = text.size - offset;
-        if (chunk > 0x40000000)
-        {
-            chunk = 0x40000000;
-        }
-        DWORD written = 0;
-        if (!WriteFile(handle, text.data + offset, (DWORD)chunk, &written, 0) ||
-            written == 0)
-        {
-            return;
-        }
-        offset += written;
-    }
-}
-
 #endif

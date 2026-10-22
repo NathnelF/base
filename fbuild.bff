@@ -186,9 +186,21 @@ ForEach( .Config in .Configs )
         .Libraries          = { 'os-file-test-obj-$ConfigName$' }
         .LinkerOutput       = 'bin\$ConfigName$\os_file_test\os_file_test.exe'
     }
+
+    ObjectList( 'os-console-test-obj-$ConfigName$' )
+    {
+        .CompilerInputFiles = { 'os\test\os_console_test.cpp' }
+        .CompilerOutputPath = 'bin\$ConfigName$\os_console_test\'
+    }
+
+    Executable( 'os-console-test-$ConfigName$' )
+    {
+        .Libraries          = { 'os-console-test-obj-$ConfigName$' }
+        .LinkerOutput       = 'bin\$ConfigName$\os_console_test\os_console_test.exe'
+    }
 }
 
-Alias( 'debug' )   { .Targets = { 'arch-test-debug', 'os-memory-test-debug', 'arena-test-debug', 'slice-test-debug', 'string-test-debug', 'log-test-debug', 'os-crash-test-debug', 'os-file-test-debug' } }
-Alias( 'release' ) { .Targets = { 'arch-test-release', 'os-memory-test-release', 'arena-test-release', 'slice-test-release', 'string-test-release', 'log-test-release', 'os-crash-test-release', 'os-file-test-release' } }
-Alias( 'profile' ) { .Targets = { 'arch-test-profile', 'os-memory-test-profile', 'arena-test-profile', 'slice-test-profile', 'string-test-profile', 'log-test-profile', 'os-crash-test-profile', 'os-file-test-profile' } }
+Alias( 'debug' )   { .Targets = { 'arch-test-debug', 'os-memory-test-debug', 'arena-test-debug', 'slice-test-debug', 'string-test-debug', 'log-test-debug', 'os-crash-test-debug', 'os-file-test-debug', 'os-console-test-debug' } }
+Alias( 'release' ) { .Targets = { 'arch-test-release', 'os-memory-test-release', 'arena-test-release', 'slice-test-release', 'string-test-release', 'log-test-release', 'os-crash-test-release', 'os-file-test-release', 'os-console-test-release' } }
+Alias( 'profile' ) { .Targets = { 'arch-test-profile', 'os-memory-test-profile', 'arena-test-profile', 'slice-test-profile', 'string-test-profile', 'log-test-profile', 'os-crash-test-profile', 'os-file-test-profile', 'os-console-test-profile' } }
 Alias( 'all' )     { .Targets = { 'debug', 'release', 'profile' } }

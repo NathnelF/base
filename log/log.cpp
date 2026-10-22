@@ -20,6 +20,7 @@
 */
 
 #include "log.h"
+#include "../os/os_console.h"
 #include "../os/os_crash.h"
 #include "../os/os_debug.h"
 #include "../os/os_file.h"

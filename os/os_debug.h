@@ -10,16 +10,14 @@
     OsLastErrorMessage does the same for the calling thread's last error, so
     call it right after the failing OS call.
 
-    OsDebuggerWrite and OsStdErrWrite take UTF-8 and do no allocation: they
-    convert to UTF-16 in a stack buffer, chunk by chunk. OsStdErrWrite uses
-    WriteConsoleW when stderr is a console (correct Unicode regardless of
-    the console code page) and writes the UTF-8 bytes as-is when stderr is
-    redirected to a file or pipe.
+    OsDebuggerWrite takes UTF-8 and does no allocation: it converts to
+    UTF-16 in a stack buffer, chunk by chunk. The standard streams (stderr,
+    stdout, stdin) are in os_console.h.
 
     This file is part of the upper os layer: it needs String8 and Arena, so
     it is included after containers (see base.cpp).
 
-    TODO: POSIX implementation (errno + strerror_r, write(2), and a ptrace /
+    TODO: POSIX implementation (errno + strerror_r, and a ptrace /
     sysctl check for the debugger).
 */
 
@@ -36,4 +34,3 @@ String8 OsLastErrorMessage(Arena *arena);
 
 b32 OsDebuggerPresent(void);
 void OsDebuggerWrite(String8 text);
-void OsStdErrWrite(String8 text);

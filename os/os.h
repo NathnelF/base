@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "os_console.h"
 #include "os_crash.h"
 #include "os_debug.h"
 #include "os_file.h"

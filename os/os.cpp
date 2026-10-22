@@ -14,6 +14,7 @@
 
 // clang-format off
 #include "os_debug.cpp"
+#include "os_console.cpp"
 #include "os_file.cpp"
 #include "os_crash.cpp"
 // clang-format on

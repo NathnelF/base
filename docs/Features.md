@@ -17,6 +17,11 @@ This document will serve as the master feature list for this repository. Split i
 - Reserve and Commit memory in one call - implemented
 - Separate calls to reserve and commit memory if the OS allows for it. - implemented
 
+### Console
+
+- stdout / stderr writes, printf-style Print, stdin line reads - implemented
+- Buffered stdout with explicit flush
+
 ### Filesystem
 
 - Load files into memory. - implemented
@@ -91,4 +96,11 @@ This document will serve as the master feature list for this repository. Split i
 - (Claude) debug: include the last few log lines in crash reports (ring buffer)
 - File log sink
 - ASan build config in fbuild.bff
-- Profiling instrumentation (TIME_BLOCK / TIME_FUNCTION, rdtsc) for the profile config, output as Chrome trace JSON
+
+
+## Profiling
+
+- System to profile performance
+- Profile scopes
+- (Claude moved from error handling) Profiling instrumentation (TIME_BLOCK / TIME_FUNCTION, rdtsc) for the profile config, output as Chrome trace JSON
+
