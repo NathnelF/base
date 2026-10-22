@@ -11,8 +11,8 @@ This file contains the coding style convetions for this repository.
 - C:\Scripts\buildf.py has a templated fbuild.bff generator which should serve as the base example for FASTbuild scripts. The root `fbuild.bff` uses its toolchain block.
 - Unity build. No libraries.
   - Each layer has a `<layer>/<layer>.cpp` that `#include`s every .cpp in that layer.
-  - `base.cpp` (repo root) includes the layer .cpp files in dependency order: architecture -> types -> os memory -> containers -> os -> log, then math. A layer may only use layers included before it. `types` is header-only.
-  - The os layer is split around containers: `os/os_memory.cpp` (what the arena is built on) comes before containers, and `os/os.cpp` (everything that needs `String8` or an arena: error messages, files, threads, windows) comes after.
+  - `base.cpp` (repo root) includes the layer .cpp files in dependency order: architecture -> types -> os lower -> containers -> os upper -> log, then math. A layer may only use layers included before it. `types` is header-only.
+  - The os layer is split around containers, so it has two unity files: `os/os_lower.cpp` (what the arena is built on: memory) comes before containers, and `os/os_upper.cpp` (everything that needs `String8` or an arena: error messages, console, files, crashes, threads, windows) comes after.
   - Unity files list includes in dependency order, so wrap them in `// clang-format off` / `// clang-format on`; clang-format would otherwise sort them alphabetically.
   - Everything is one translation unit, so every name in base, including `static` helpers, must be unique. Prefix helpers with their layer or system (`CpuFeatureBit`, not `Bit`).
 - Tests: each layer test is one .cpp in `<layer>/test/` that includes its layer's .cpp (and any lower layers' .cpp) and has a `main`. Test targets live in the root `fbuild.bff`; run `fbuild debug|release|profile|all` from the repo root.

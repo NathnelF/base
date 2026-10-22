@@ -13,7 +13,7 @@
 #include <stdio.h>
 
 #include "../../architecture/architecture.cpp"
-#include "../../os/os_memory.cpp"
+#include "../../os/os_lower.cpp"
 #include "../containers.cpp"
 
 static int test_failures = 0;

@@ -5,7 +5,7 @@
 
     A stream is a console when GetConsoleMode succeeds on its handle.
     Console output goes through OsWin32WriteWide (os_debug_win32.cpp, which
-    os.cpp includes first) and console input through ReadConsoleW; files and
+    os_upper.cpp includes first) and console input through ReadConsoleW; files and
     pipes use WriteFile / ReadFile on the raw UTF-8 bytes.
 
     Input lines are gathered as pieces in the per-thread console scratch and

@@ -2,8 +2,8 @@
     os.h
 
     Umbrella include for the os layer's declarations. The definitions come
-    from os_memory.cpp (lower part, before containers) and os.cpp (upper
-    part, after containers); see os.cpp.
+    from os_lower.cpp (before containers) and os_upper.cpp (after
+    containers); see os_upper.cpp.
 */
 
 #pragma once

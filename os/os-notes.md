@@ -4,16 +4,17 @@ Windows <- initial focus
 MacOS
 Linux
 
-The layer is split around containers (see os.cpp): os_memory.cpp is
-included before containers, os.cpp (everything needing String8 / Arena)
-after.
+The layer is split around containers (see os_upper.cpp): os_lower.cpp is
+included before containers, os_upper.cpp (everything needing String8 /
+Arena) after.
 
 Files:
 - os.h: umbrella header.
+- os_lower.cpp: lower unity part (before containers); includes os_memory.cpp.
 - os_memory.h / os_memory.cpp: reserve / commit / decommit / release API,
-  shared rounding, cached page info, ZII guards. Lower unity part.
+  shared rounding, cached page info, ZII guards.
 - os_memory_win32.cpp: VirtualAlloc backend. POSIX backend is a TODO.
-- os.cpp: upper unity part.
+- os_upper.cpp: upper unity part (after containers); includes the rest.
 - os_debug.h / os_debug.cpp: OS error messages, debugger output.
 - os_debug_win32.cpp: FormatMessageW / OutputDebugStringW, and the UTF-16
   chunked writer os_console reuses.
